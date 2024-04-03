@@ -1,5 +1,5 @@
 # AI_Feynman_2024_tools
-A repository with tools to use https://github.com/SJ001/AI-Feynman
+A repository with tools to use https://github.com/SJ001/AI-Feynman by Filip Frisk.
 
 ## HowTo
 1. Follow the steps at https://github.com/SJ001/AI-Feynman/issues/85
