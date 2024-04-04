@@ -1,77 +1,82 @@
-
-### Create table of equation and result ###
-
-import regex as re
+import pickle 
+import os
 import pandas as pd
+import regex as re
 import string
-
-EQUATIONNAME = 'I.8.14'
-FILENAME = 'test_output.txt'
-# Average_error_[bits]  Cummulative_error[bits] Complexity[bits] Error[bits/data_point] Expression
-names= [ 'Average_error',  'Cummulative_error', 'Complexity', 'Error', 'Raw Expression' ]
-df_raw = pd.read_csv(FILENAME,sep=' ', names=names )
-df_rounded = df_raw.round(1)
-
-# write a function that loops through column Expression and rounds the numbers to 1 decimal place
-# Here are an example: exp(-23.549133910321+exp(pi)) -> exp(-23.5+exp(pi))
-# The function should return a new dataframe with the rounded expressions
-def round_expression(df):
-    df['Cleaned Expression'] = df['Raw Expression'].apply(lambda x: re.sub(r'([0-9]+\.[0-9]+)', lambda y: str(round(float(y.group(1)),1)), x))
-    return df
-df_rounded_expressions = round_expression(df_rounded)
-
-# Get the number of rows in the DataFrame
-num_rows = df_rounded_expressions.shape[0]
-
-# Generate a list of alphabetic labels
-labels = list(string.ascii_uppercase[:num_rows])
-
-# add this first to the dataframe
-df_rounded_expressions['Labels'] = labels
-
-# Add column Labels to the left 
-df_rounded_expressions = df_rounded_expressions[['Labels'] + [ col for col in df_rounded_expressions.columns if col != 'Labels' ]]
-
-
-### Create pareto frontier ###
 import matplotlib.pyplot as plt
 
-plt.plot(df_rounded['Complexity'], df_rounded['Error'], color='b')
-plt.scatter(df_rounded['Complexity'], df_rounded['Error'], color='r')
-plt.xlabel('Complexity [bits]')
-plt.ylabel('Inaccuracy [bits/data_point]')
-plt.title('Pareto frontier for equation: '+EQUATIONNAME, fontsize=10)
-for i in range(num_rows):
-    plt.text(df_rounded_expressions['Complexity'][i]+2.5, df_rounded_expressions['Error'][i]+0.01, df_rounded_expressions['Labels'][i], color = 'red', fontsize=14, ha='right',va = 'bottom')
+#with open('../units.pkl', 'rb') as f:
+#        dic_units = pickle.load(f)
 
-# save using FILENAME
+TYPE = 'demo3'
+DIR_PATH = 'demo3/'
+files = os.listdir(DIR_PATH)
 
-plt.savefig(FILENAME.replace('.txt','.png')) 
+files = [file for file in files if not file.startswith('.')] # delete hidden files 
 
-plt.show()
-
-
-### Create tex-file  ###
-
-df_rounded_expressions_latex = df_rounded_expressions.copy()
-
-# remove trailing zeros in Average_error & Cummulative_error & Complexity & Error
-df_rounded_expressions_latex['Average_error'] = df_rounded_expressions_latex['Average_error'].apply(lambda x: re.sub(r'\.0$', '', str(x)))
-df_rounded_expressions_latex['Cummulative_error'] = df_rounded_expressions_latex['Cummulative_error'].apply(lambda x: re.sub(r'\.0$', '', str(x)))
-df_rounded_expressions_latex['Complexity'] = df_rounded_expressions_latex['Complexity'].apply(lambda x: re.sub(r'\.0$', '', str(x)))
-df_rounded_expressions_latex['Error'] = df_rounded_expressions_latex['Error'].apply(lambda x: re.sub(r'\.0$', '', str(x)))
-
-# Only include labels, complexity and Error,raw expression and cleaned expression
-df_rounded_expressions_latex = df_rounded_expressions_latex[['Labels', 'Complexity', 'Error', 'Raw Expression', 'Cleaned Expression']]
-df_rounded_expressions_latex.columns = ['Label', 'Complexity', 'Error', 'Raw Expression','Cleaned Expression']
+def round_and_latex_expression(df):
+    df['Raw Expression'] = df['Raw Expression'].apply(lambda x: "$"+x+"$") # add latex formatting    
+    df['Cleaned Expression'] = df['Raw Expression'].apply(lambda x: re.sub(r'([0-9]+\.[0-9]+)', lambda y: str(round(float(y.group(1)),1)), x))
+    return df
 
 
-df_rounded_expressions_latex.to_latex(FILENAME.replace('.txt','.tex'), index=False)
+for file in files:
+    print(f"Processing file {file}\n")
+    names= [ 'Average_error',  'Cummulative_error', 'Complexity', 'Error', 'Raw Expression' ]
+    df = pd.read_csv(DIR_PATH+file,sep=' ', names=names )
 
-# Append the caption, label, and end of the table environment
-with open(FILENAME.replace('.txt','.tex'), 'a') as f:
-    f.write('\caption{Pareto frontier for equation: ' + EQUATIONNAME + ' with Complexity in bits and Error in bits/data point}\n')
-    f.write('\label{tab:pareto_' + EQUATIONNAME + '}\n')
-    f.write('\\end{table}\n')
+    df = df.reset_index(drop=True)
+    df = round_and_latex_expression(df)
+    
+    df = df[['Average_error', 'Complexity', 'Raw Expression','Cleaned Expression']] # select only the columns we want
+
+    df = df.rename(columns={'Average_error': 'Error'})
+    
+    df.insert(0,'Labels',list(string.ascii_uppercase[:df.shape[0]]))
+
+    
+    
+    # Save reults in latex format
+    save_path = f'{TYPE}_latex/'
+    
+    os.makedirs(save_path , exist_ok=True)
+    
+    with open(save_path+file +'.tex', 'w') as f:
+        f.write(df.to_latex(index=False))
 
 
+    # Save reults in latex format
+    save_path = f'{TYPE}_plots/'
+
+    os.makedirs(save_path , exist_ok=True)
+
+    plt.plot(df['Complexity'], df['Error'], color='b')
+    plt.scatter(df['Complexity'], df['Error'], color='r')
+    plt.xlabel('Complexity [bits]')
+    plt.ylabel('Inaccuracy [bits/data point]')
+    for i in range(df.shape[0]):
+        plt.text(df['Complexity'][i], df['Error'][i], df['Labels'][i], color = 'red', fontsize=14, ha='right',va = 'bottom')
+
+    plt.savefig(save_path+file +'.png', dpi=300) 
+
+    plt.close()
+
+    #plt.show()
+
+# using https://wolframalpha.readthedocs.io/en/latest/?badge=latest
+
+ 
+""" Using wolframalpha API to get the results of the equations, I did it manually 
+import wolframalpha
+
+appId = 'JR3AT2-LVHPJHA755'
+client = wolframalpha.Client(appId)
+
+res = client.query('Test') # <class 'wolframalpha.Result'>
+dict_res = {}
+for pod in res.pods:
+    for sub in pod.subpods:
+        #print(sub.plaintext)
+        dict_res[pod.title] = sub.plaintext
+print(dict_res)
+""" 
