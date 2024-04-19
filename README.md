@@ -1,4 +1,4 @@
-# AI Feynman working instance and tools for spring 2024
+# Only working AI Feynman instance and tools for spring 2024
 A repository with tools to use https://github.com/SJ001/AI-Feynman by Filip Frisk.
 
 ## HowTo
